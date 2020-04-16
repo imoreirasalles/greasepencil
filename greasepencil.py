@@ -50,6 +50,7 @@ def greasepencil(input_image):
 
     # get sub image coordinates
     region_list.sort(key=origin_coord)
+    review_count = 0
     for region in region_list:
         counter = region_list.index(region) + 1
         height = region[2] - region[0]
@@ -58,7 +59,7 @@ def greasepencil(input_image):
         if ratio < 1:
             ratio = 1/ratio
 
-    # save sub image and name it accordingly       
+        # save sub image and name it accordingly       
         if 1.4 < ratio < 1.61:
             io.imsave(
                 f"{destination}/{input_image[0:-4]}-{counter:02}.jpg",
@@ -70,6 +71,10 @@ def greasepencil(input_image):
                 f"{destination}/{input_image[0:-4]}-{counter:02}-REVISAR.jpg",
                 original_image[region[0] : region[2], region[1] : region[3]], quality=100
             )
+            review_count += 1 
+        
+    
+    print(f"A imagem {input_image} gerou {len(review_count)} produtos problemáticos")
         
 
 # list files to be processed

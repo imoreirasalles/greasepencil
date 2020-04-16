@@ -9,15 +9,15 @@ As imagens resultantes têm o mesmo nome do arquivo matriz, acrescido de um cont
 
 * Você deve ter Python 3.7 ou superior instalado na sua máquina.
 
-* Clique duas vezes no ícone do script `greasepencil.py` para abrí-lo no programa IDLE. Para executá-lo, clique em `Run` ou pressione F5
+* Clique duas vezes no ícone do script `greasepencil.py` para abrí-lo no programa IDLE. Para executá-lo, clique em `Run` ou pressione F5.
 
 * O programa irá solicitar o caminho da pasta de origem e destino das imagens. Você deve pressionar `Enter` após cada entrada.
 
 * Para copiar o caminho usando Windows 10, navegue até a pasta desejada, pressione `Ctrl` + `L` para revelar o caminho na barra de endereço e copie o texto como preferir. Note que você deve estar dentro da pasta, mesmo que esteja vazia.
 
-* Em um mac, clique com o botão direito no ícone da pasta desejada e segure a tecla `Option`. A opção "copiar   caminho do arquivo" aparece.
+* Em um mac, clique com o botão direito no ícone da pasta desejada e segure a tecla `Option`. A opção "copiar caminho do arquivo" aparece.
 
-* As imagens passam a ser salvas automaticamente.  :heart_eyes:
+* As imagens passam a ser salvas automaticamente. :heart_eyes: A cada arquivo o programa informa quantas regiões detectou e quantas precisam de revisão, assim como o total de imagens geradas ao final do processamento.
 
 ***
 
