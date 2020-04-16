@@ -9,10 +9,11 @@ verify_ssl = true
 scikit-image = "*"
 pylint = "*"
 black = "*"
+python-dotenv = "*"
+timecode = "*"
 
 [requires]
 python_version = "3.8"
 
 [pipenv]
 allow_prereleases = true
-

@@ -9,10 +9,13 @@ from skimage.segmentation import clear_border
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
+source = input("Em qual pasta estão as imagens matriz?")
+destination = input("Em qual pasta deseja salvar as imagens individualizadas?")
+
 # define cropper function
 def greasepencil(input_image):
 
-    os.chdir("./_input")
+    os.chdir(f"{source}")
 
     # import and preprocess source image
     original_image = img_as_ubyte(io.imread(input_image))
@@ -33,14 +36,15 @@ def greasepencil(input_image):
         if 400000 > region.area >= 100000:
             coords = region.bbox
             region_list.append(coords)
+    print(f"A imagem {input_image} foi dividida em {len(region_list)} partes")
 
 
-    # create output directory
+    '''create output directory
     if not os.path.exists("../_output"):
         os.mkdir("../_output")
-    os.chdir("..")
+    os.chdir("..")'''
 
-    # order sub image from top-left to bottom-right
+    # order sub images from top-left to bottom-right
     def origin_coord(item):
         return (item[0] * 4 + item[1]) / 5
 
@@ -57,22 +61,26 @@ def greasepencil(input_image):
     # save sub image and name it accordingly       
         if 1.4 < ratio < 1.61:
             io.imsave(
-                f"./_output/{input_image[0:-4]}-{counter:02}.jpg",
+                f"{destination}/{input_image[0:-4]}-{counter:02}.jpg",
                 original_image[region[0] : region[2], region[1] : region[3]], quality=100
             )
+            
         else:
             io.imsave(
-                f"./_output/{input_image[0:-4]}-{counter:02}-REVISAR.jpg",
+                f"{destination}/{input_image[0:-4]}-{counter:02}-REVISAR.jpg",
                 original_image[region[0] : region[2], region[1] : region[3]], quality=100
             )
+        
 
 # list files to be processed
+extensions = (".jpg", ".jpeg")
 image_files = [
     image_file
-    for image_file in os.listdir("./_input")
-    if str(image_file).endswith(".jpg")
+    for image_file in os.listdir(f"{source}")
+    if str(image_file).endswith(tuple(extensions))
 ]
 
 # call function
 for i in image_files:
     greasepencil(i)
+print(f"Você forneceu {len(image_files)} imagens e gerou {len(os.listdir(destination))} arquivos!")
