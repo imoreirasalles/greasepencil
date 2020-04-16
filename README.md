@@ -17,9 +17,10 @@ As imagens resultantes têm o mesmo nome do arquivo matriz, acrescido de um cont
 
 * Em um mac, clique com o botão direito no ícone da pasta desejada e segure a tecla `Option`. A opção "copiar   caminho do arquivo" aparece.
 
-* As imagens passam a ser salvas automaticamente  :heart_eyes:
+* As imagens passam a ser salvas automaticamente.  :heart_eyes:
 
 ***
 
 > Nota: O tempo de processamento é de aproximadamente 10 segundos por folha com 20 diapositivos em uma pasta local. Se os arquivos de origem estiverem no servidor o tempo de processamento pode aumentar consideravelmente.
+> 
 > Nota2: Pode have uma diferença de cor entre as imagens matriz e resultantes, uma vez que o script não associa nenhum espaço de cor aos arquivos.
