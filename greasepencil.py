@@ -12,10 +12,6 @@ from skimage import exposure, img_as_ubyte, io, color, transform
 TO DO: PAD WITH BLACK TO CENTER TEMPLATE
 """
 
-source = input("Em qual pasta estão as imagens matriz?")
-destination = input("Em qual pasta deseja salvar as imagens individualizadas?")
-previous_files = len(os.listdir(destination))
-
 def trim_black_border(img,tol=0):
     # img is 2D or 3D image data
     # tol  is tolerance
@@ -34,16 +30,18 @@ def trim_black_border(img,tol=0):
 
 def greasepencil(input_image, ncol=4, tmp_w=None):
 
+
     os.chdir(f"{source}")
 
-    # read image and determine template width
-    color_image = io.imread(input_image)
-    image = img_as_ubyte(io.imread(input_image, as_gray=True))
+def open_image(input):
+    color_image = io.imread(input)
+    image = img_as_ubyte(io.imread(input, as_gray=True))
     m, n = image.shape
     if tmp_w is None:
-        tmp_w = round(min(image.shape)/ncol)
+        tmp_w = round(n/ncol)
         user_tmp_w = False
-    # establish relative measures
+    
+    return tmp_w
     
 
 def build_template(tmp_w):
@@ -82,7 +80,7 @@ def multiscale_template_matcher(rel_template):
         h_coordinates = peak_local_max(h_result, min_distance=int(tmp_w*0.8), threshold_abs=0.35, exclude_border=False)
         coordinates_list = [[coor[0], coor[1]] for coor in h_coordinates]
 
-        if user_tmp_w:
+        if user_tmp_w == True:
             break
 
         peaks = [h_result[r, c] for r, c in h_coordinates]
@@ -142,6 +140,10 @@ def frame_builder(coordinates_list):
 
 if __name__ == "__main__":
 
+    source = input("Em qual pasta estão as imagens matriz?")
+    destination = input("Em qual pasta deseja salvar as imagens individualizadas?")
+    previous_files = len(os.listdir(destination))
+
     # create list of files to be processed
     extensions = (".jpg", ".jpeg")
     image_files = [
@@ -156,7 +158,7 @@ if __name__ == "__main__":
             for frame in greasepencil(image):
                 picture = image[frame['minr']:frame['maxr'], frame['minc'], frame['maxc']]
                 picture = trim_black_border(picture, tol=100)
-                io.imsave(os.path.join(destination, picture["filename"]), picture, quality=100)                
+                io.imsave(os.path.join(destination, picture["filename"]), picture, quality=100)             
         except Exception as e:
             print(str(e))
 
