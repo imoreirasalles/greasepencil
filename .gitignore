@@ -1,11 +1,19 @@
 /testing/
 
-./greasepencil-old-1.py
+/_input
 
-./greasepencil-old-2.py
+/_output
 
-./edge-template.py
+greasepencil-old-1.py
 
-./canny-viewer.py
+greasepencil-old-2.py
 
-./run.py
+greasepencil-dev.py
+
+edge-template.py
+
+canny-viewer.py
+
+canny.py
+
+run.py
