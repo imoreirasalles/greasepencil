@@ -28,7 +28,7 @@ def trim_black_border(img,tol=0):
 
     return img[row_start:row_end,col_start:col_end]
 
-def greasepencil(input_image, ncol=4, dimension=None):
+def greasepencil(input_image, ncol=4, tmp_w=None):
 
     os.chdir(f"{source}")
 
@@ -36,10 +36,9 @@ def greasepencil(input_image, ncol=4, dimension=None):
     color_image = io.imread(input_image)
     image = img_as_ubyte(io.imread(input_image, as_gray=True))
     m, n = image.shape
-    if dimension is None:
+    if not tmp_w:
         tmp_w = round(min(image.shape)/ncol)
-    else:
-        tmp_w = dimension
+        user_tmp_w = False
     # establish relative measures
     frame_left = round(tmp_w * 0.15)
     frame_right = round(tmp_w * 0.85)
@@ -72,7 +71,7 @@ def greasepencil(input_image, ncol=4, dimension=None):
         h_coordinates = peak_local_max(h_result, min_distance=int(tmp_w*0.8), threshold_abs=0.35, exclude_border=False)
         coordinates_list = [[coor[0], coor[1]] for coor in h_coordinates]
 
-        if dimension:
+        if user_tmp_w == True:
             break
 
         peaks = [h_result[r, c] for r, c in h_coordinates]
@@ -99,13 +98,13 @@ def greasepencil(input_image, ncol=4, dimension=None):
     coordinates_list.sort(key= lambda item: (item[0] * 4 + item[1]) / 5)
 
     # determine picture orientation, trim and save file
-    counter = 1
 
-    for point in (coordinates_list):
+    for i, point in enumerate(coordinates_list):
         r, c = point
         name, ext = str.split(input_image, ".")
         large = round(tmp_w * 0.34)
         small = round(tmp_w * 0.22)
+        filename = f"{name}-{i+1:02}.jpg"
         if v_result[r, c] > h_result[r, c]:
             minr = np.clip(r - large, 0, None)
             maxr = np.clip(r + large, None, m)
@@ -121,10 +120,7 @@ def greasepencil(input_image, ncol=4, dimension=None):
         picture = color_image[minr : maxr, minc : maxc]
         picture = trim_black_border(picture, tol=100)
 
-        io.imsave(
-            f"{destination}/{name}-{counter:02}.jpg", picture, quality=100)
-        
-        counter += 1
+        io.imsave(os.path.join(destination, filename), picture, quality=100)
 
 
 # create list of files to be processed
