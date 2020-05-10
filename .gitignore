@@ -1,0 +1,10 @@
+/_input/
+/_output/
+
+canny-viewer.py
+canny.py
+edge-template.py
+greasepencil-dev.py
+greasepencil-old-1.py
+greasepencil-old-2.py
+
