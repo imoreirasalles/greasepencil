@@ -34,14 +34,13 @@ def greasepencil(input_image, ncol=4, tmp_w=None):
     os.chdir(f"{source}")
 
 def open_image(input):
-    color_image = io.imread(input)
-    image = img_as_ubyte(io.imread(input, as_gray=True))
+    image = io.imread(input)
     m, n = image.shape
     if tmp_w is None:
         tmp_w = round(n/ncol)
         user_tmp_w = False
     
-    return tmp_w
+    return image, tmp_w, user_tmp_w
     
 
 def build_template(tmp_w):
@@ -58,7 +57,7 @@ def build_template(tmp_w):
 
     return rel_template
 
-def multiscale_template_matcher(rel_template):
+def multiscale_template_matcher(rel_template, image, user_tmp_w):
 
     # loop over template sizes and pick best match
     widths = []
@@ -74,8 +73,8 @@ def multiscale_template_matcher(rel_template):
 
         v_template = np.rot90(resized)
 
-        h_result = match_template(color_image[:,:,2], resized, pad_input=True)
-        v_result = match_template(color_image[:,:,2], v_template, pad_input=True)
+        h_result = match_template(image[:,:,2], resized, pad_input=True)
+        v_result = match_template(image[:,:,2], v_template, pad_input=True)
 
         h_coordinates = peak_local_max(h_result, min_distance=int(tmp_w*0.8), threshold_abs=0.35, exclude_border=False)
         coordinates_list = [[coor[0], coor[1]] for coor in h_coordinates]
@@ -119,7 +118,7 @@ def frame_builder(coordinates_list):
         name, ext = str.split(input_image, ".")
         large = round(tmp_w * 0.34)
         small = round(tmp_w * 0.22)
-        filename = f"{name}-{i+1:02}.jpg"
+        image_id = f"{name}-{i+1:02}.jpg"
         if v_result[r, c] > h_result[r, c]:
             minr = np.clip(r - large, 0, None)
             maxr = np.clip(r + large, None, m)
@@ -133,7 +132,7 @@ def frame_builder(coordinates_list):
             maxc = np.clip(c + large, None, n)
 
 
-        detected_frames.append({i:i, filename:filename, minr:minr, maxr:maxr, minc:minc, maxc:maxc})
+        detected_frames.append({image_id:image_id, minr:minr, maxr:maxr, minc:minc, maxc:maxc})
     
     return detected_frames
 
@@ -158,7 +157,7 @@ if __name__ == "__main__":
             for frame in greasepencil(image):
                 picture = image[frame['minr']:frame['maxr'], frame['minc'], frame['maxc']]
                 picture = trim_black_border(picture, tol=100)
-                io.imsave(os.path.join(destination, picture["filename"]), picture, quality=100)             
+                io.imsave(os.path.join(destination, frame["image_id"]), picture, quality=100)             
         except Exception as e:
             print(str(e))
 
