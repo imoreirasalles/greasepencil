@@ -9,7 +9,7 @@ from skimage.segmentation import watershed
 from skimage import exposure, img_as_ubyte, io, color, transform
 
 """
-PAD WITH BLACK TO CENTER TEMPLATE
+TO DO: PAD WITH BLACK TO CENTER TEMPLATE
 """
 
 source = input("Em qual pasta estão as imagens matriz?")
@@ -58,6 +58,10 @@ def build_template(tmp_w):
     rel_template = np.pad(rel_template, (30,), constant_values=1)
     rel_template += 0.1 * np.random.random(rel_template.shape)
 
+    return rel_template
+
+def multiscale_template_matcher(rel_template):
+
     # loop over template sizes and pick best match
     widths = []
     coors = []
@@ -103,6 +107,10 @@ def build_template(tmp_w):
 
     # arrange images from top left to bottom right
     coordinates_list.sort(key= lambda item: (item[0] * 4 + item[1]) / 5)
+
+    return coordinates_list
+
+def frame_builder(coordinates_list):
 
     # determine picture orientation, trim and save file
 
