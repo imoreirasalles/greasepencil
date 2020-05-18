@@ -12,21 +12,23 @@ source = input("Em qual pasta estão as imagens matriz?")
 destination = input("Em qual pasta deseja salvar as imagens individualizadas?")
 previous_files = len(os.listdir(destination))
 
-def trim_black_border(img,tol=0):
+
+def trim_black_border(img, tol=0):
     # img is 2D or 3D image data
     # tol  is tolerance
-    mask = img>tol
-    if img.ndim==3:
+    mask = img > tol
+    if img.ndim == 3:
         mask = mask.all(2)
-    m,n = mask.shape
-    mask0,mask1 = mask.any(0),mask.any(1)
-    
-    col_start = np.clip(mask0.argmax(), 0, 23)
-    col_end = np.clip(n-mask0[::-1].argmax(), n-23, n)
-    row_start = np.clip(mask1.argmax(), 0, 23)
-    row_end = np.clip(m-mask1[::-1].argmax(), m-23, m)
+    m, n = mask.shape
+    mask0, mask1 = mask.any(0), mask.any(1)
 
-    return img[row_start:row_end,col_start:col_end]
+    col_start = np.clip(mask0.argmax(), 0, 23)
+    col_end = np.clip(n - mask0[::-1].argmax(), n - 23, n)
+    row_start = np.clip(mask1.argmax(), 0, 23)
+    row_end = np.clip(m - mask1[::-1].argmax(), m - 23, m)
+
+    return img[row_start:row_end, col_start:col_end]
+
 
 def greasepencil(input_image, ncol=4, dimension=None):
 
@@ -37,7 +39,7 @@ def greasepencil(input_image, ncol=4, dimension=None):
     image = img_as_ubyte(io.imread(input_image, as_gray=True))
     m, n = image.shape
     if dimension is None:
-        tmp_w = round(min(image.shape)/ncol)
+        tmp_w = round(min(image.shape) / ncol)
     else:
         tmp_w = dimension
     # establish relative measures
@@ -60,28 +62,33 @@ def greasepencil(input_image, ncol=4, dimension=None):
     found = None
 
     for scale in np.linspace(0.5, 1.0, 6)[::-1]:
-        
-        tmp_w = int(rel_template.shape[0]*scale)
+
+        tmp_w = int(rel_template.shape[0] * scale)
         resized = transform.resize(rel_template, (tmp_w, tmp_w))
 
         v_template = np.rot90(resized)
 
-        h_result = match_template(color_image[:,:,2], resized, pad_input=True)
-        v_result = match_template(color_image[:,:,2], v_template, pad_input=True)
+        h_result = match_template(color_image[:, :, 2], resized, pad_input=True)
+        v_result = match_template(color_image[:, :, 2], v_template, pad_input=True)
 
-        h_coordinates = peak_local_max(h_result, min_distance=int(tmp_w*0.8), threshold_abs=0.35, exclude_border=False)
+        h_coordinates = peak_local_max(
+            h_result,
+            min_distance=int(tmp_w * 0.8),
+            threshold_abs=0.35,
+            exclude_border=False,
+        )
         coordinates_list = [[coor[0], coor[1]] for coor in h_coordinates]
 
         if dimension:
             break
 
         peaks = [h_result[r, c] for r, c in h_coordinates]
-        
+
         if peaks:
-            avg = sum(peaks)/len(peaks)
+            avg = sum(peaks) / len(peaks)
         else:
             continue
-        
+
         if found is None or avg > found:
             found = avg
             widths.append(tmp_w)
@@ -89,19 +96,19 @@ def greasepencil(input_image, ncol=4, dimension=None):
             h_results.append(h_result)
             v_results.append(v_result)
         else:
-            coordinates_list =  coors[-1]
+            coordinates_list = coors[-1]
             v_result = v_results[-1]
             h_result = h_results[-1]
             tmp_w = widths[-1]
             break
 
     # arrange images from top left to bottom right
-    coordinates_list.sort(key= lambda item: (item[0] * 4 + item[1]) / 5)
+    coordinates_list.sort(key=lambda item: (item[0] * 4 + item[1]) / 5)
 
     # determine picture orientation, trim and save file
     counter = 1
 
-    for point in (coordinates_list):
+    for point in coordinates_list:
         r, c = point
         name, ext = str.split(input_image, ".")
         large = round(tmp_w * 0.34)
@@ -111,19 +118,18 @@ def greasepencil(input_image, ncol=4, dimension=None):
             maxr = np.clip(r + large, None, m)
             minc = np.clip(c - small, 0, None)
             maxc = np.clip(c + small, None, n)
-        
-        else:       
+
+        else:
             minr = np.clip(r - small, 0, None)
             maxr = np.clip(r + small, None, m)
             minc = np.clip(c - large, 0, None)
             maxc = np.clip(c + large, None, n)
-        
-        picture = color_image[minr : maxr, minc : maxc]
+
+        picture = color_image[minr:maxr, minc:maxc]
         picture = trim_black_border(picture, tol=100)
 
-        io.imsave(
-            f"{destination}/{name}-{counter:02}.jpg", picture, quality=100)
-        
+        io.imsave(f"{destination}/{name}-{counter:02}.jpg", picture, quality=100)
+
         counter += 1
 
 
@@ -141,9 +147,9 @@ for i in image_files:
         greasepencil(i)
     except Exception as e:
         print(str(e))
-        
+
 # final feedback
 print(
-    f"Você forneceu {len(image_files)} imagens e gerou {len(os.listdir(destination))-previous_files} arquivos!")
-
+    f"Você forneceu {len(image_files)} imagens e gerou {len(os.listdir(destination))-previous_files} arquivos!"
+)
 
