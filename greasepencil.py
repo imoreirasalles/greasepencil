@@ -26,22 +26,17 @@ def trim_black_border(img,tol=0):
     row_start = np.clip(mask1.argmax(), 0, 23)
     row_end = np.clip(m-mask1[::-1].argmax(), m-23, m)
 
-    return img[row_start:row_end,col_start:col_end]
-
-def greasepencil(input_image, ncol=4, tmp_w=None):
+    return img[row_start:row_end, col_start:col_end]
 
 
-    os.chdir(f"{source}")
-
-def open_image(input):
-    image = io.imread(input)
+def open_image(image_path, tmp_w=None, ncol=4):
+    image = io.imread(image_path)
     m, n = image.shape
     if tmp_w is None:
         tmp_w = round(n/ncol)
         user_tmp_w = False
     
-    return image, tmp_w, user_tmp_w
-    
+    return image, tmp_w, user_tmp_w, image_path
 
 def build_template(tmp_w):
     # build slide template
@@ -50,14 +45,14 @@ def build_template(tmp_w):
     frame_top = round(tmp_w * 0.27)
     frame_bottom = round(tmp_w * 0.73)
     
-    rel_template = np.full((tmp_w, tmp_w), 0.07)
-    rel_template[frame_top:frame_bottom, frame_left:frame_right] = 0.5
-    rel_template = np.pad(rel_template, (30,), constant_values=1)
-    rel_template += 0.1 * np.random.random(rel_template.shape)
+    template = np.full((tmp_w, tmp_w), 0.07)
+    template[frame_top:frame_bottom, frame_left:frame_right] = 0.5
+    template = np.pad(template, (30,), constant_values=1)
+    template += 0.1 * np.random.random(template.shape)
 
-    return rel_template
+    return template
 
-def multiscale_template_matcher(rel_template, image, user_tmp_w):
+def multiscale_template_matcher(template, image, user_tmp_w):
 
     # loop over template sizes and pick best match
     widths = []
@@ -69,7 +64,7 @@ def multiscale_template_matcher(rel_template, image, user_tmp_w):
     for scale in np.linspace(0.5, 1.0, 6)[::-1]:
         
         tmp_w = tmp_w * scale
-        resized = transform.resize(rel_template, (tmp_w, tmp_w))
+        resized = transform.resize(template, (tmp_w, tmp_w))
 
         v_template = np.rot90(resized)
 
@@ -102,12 +97,12 @@ def multiscale_template_matcher(rel_template, image, user_tmp_w):
             tmp_w = widths[-1]
             break
 
-    # arrange images from top left to bottom right
+    # sort images from top left to bottom right
     coordinates_list.sort(key= lambda item: (item[0] * 4 + item[1]) / 5)
 
-    return coordinates_list
+    return coordinates_list, v_result, h_result, tmp_w
 
-def frame_builder(coordinates_list):
+def build_frames(coordinates_list, v_result, h_result, tmp_w, input_image):
 
     # determine picture orientation, trim and save file
 
@@ -131,10 +126,22 @@ def frame_builder(coordinates_list):
             minc = np.clip(c - large, 0, None)
             maxc = np.clip(c + large, None, n)
 
+        picture = image[minr:maxr, minc:maxc]
+        picture = trim_black_border(picture, tol=100)
 
         detected_frames.append({image_id:image_id, minr:minr, maxr:maxr, minc:minc, maxc:maxc})
     
     return detected_frames
+
+
+
+image, tmp_w, user_tmp_w, image_path = open_image("path/to/image")
+
+template = build_template(tmp_w)
+
+coordinates_list, v_result, h_result, tmp_w = multiscale_template_matcher(template, image, user_tmp_w)
+
+detected_frames = build_frames(coordinates_list, v_result, h_result, tmp_w, image_path)
 
 
 if __name__ == "__main__":
@@ -154,7 +161,7 @@ if __name__ == "__main__":
     # call function
     for image in image_files:
         try:
-            for frame in greasepencil(image):
+            for frame in detected_frames:
                 picture = image[frame['minr']:frame['maxr'], frame['minc'], frame['maxc']]
                 picture = trim_black_border(picture, tol=100)
                 io.imsave(os.path.join(destination, frame["image_id"]), picture, quality=100)             
