@@ -6,6 +6,7 @@ from skimage.feature import match_template, peak_local_max
 from skimage.morphology import extrema
 from skimage.measure import label
 from skimage.segmentation import watershed
+from skimage.color import rgb2hsv
 from skimage import exposure, img_as_ubyte, io, color, transform
 
 source = input("Em qual pasta estão as imagens matriz?")
@@ -35,19 +36,14 @@ def greasepencil(input_image, ncol=4, tmp_w=None):
     os.chdir(f"{source}")
 
     # read image and determine template width
-    color_image = io.imread(input_image)
-    image = img_as_ubyte(io.imread(input_image, as_gray=True))
-    m, n = image.shape
-<<<<<<< HEAD
-    if dimension is None:
-        tmp_w = round(min(image.shape) / ncol)
-    else:
-        tmp_w = dimension
-=======
+    rgb_img = img_as_ubyte(io.imread(input_image))
+    hsv_img = rgb2hsv(rgb_img)
+    value_img = hsv_img[:, :, 2]
+    m, n = value_img.shape
     if not tmp_w:
-        tmp_w = round(min(image.shape)/ncol)
+        tmp_w = round(min(value_img.shape)/ncol)
         user_tmp_w = False
->>>>>>> ea87a7c07253c9c2e7199535a184c1bbeb9730f2
+        
     # establish relative measures
     frame_left = round(tmp_w * 0.15)
     frame_right = round(tmp_w * 0.85)
@@ -74,21 +70,23 @@ def greasepencil(input_image, ncol=4, tmp_w=None):
 
         v_template = np.rot90(resized)
 
-        h_result = match_template(color_image[:, :, 2], resized, pad_input=True)
-        v_result = match_template(color_image[:, :, 2], v_template, pad_input=True)
+        h_result = match_template(value_img, resized, pad_input=True)
+        v_result = match_template(value_img, v_template, pad_input=True)
 
-        h_coordinates = peak_local_max(
-            h_result,
+        combined_results = h_result + v_result
+
+        coordinates = peak_local_max(
+            combined_results,
             min_distance=int(tmp_w * 0.8),
             threshold_abs=0.35,
             exclude_border=False,
         )
-        coordinates_list = [[coor[0], coor[1]] for coor in h_coordinates]
+        coordinates_list = [[coor[0], coor[1]] for coor in coordinates]
 
         if user_tmp_w == True:
             break
 
-        peaks = [h_result[r, c] for r, c in h_coordinates]
+        peaks = [h_result[r, c] for r, c in coordinates]
 
         if peaks:
             avg = sum(peaks) / len(peaks)
@@ -112,17 +110,13 @@ def greasepencil(input_image, ncol=4, tmp_w=None):
     coordinates_list.sort(key=lambda item: (item[0] * 4 + item[1]) / 5)
 
     # determine picture orientation, trim and save file
-
-<<<<<<< HEAD
-    for point in coordinates_list:
-=======
     for i, point in enumerate(coordinates_list):
->>>>>>> ea87a7c07253c9c2e7199535a184c1bbeb9730f2
         r, c = point
         name, ext = str.split(input_image, ".")
         large = round(tmp_w * 0.34)
         small = round(tmp_w * 0.22)
         filename = f"{name}-{i+1:02}.jpg"
+
         if v_result[r, c] > h_result[r, c]:
             minr = np.clip(r - large, 0, None)
             maxr = np.clip(r + large, None, m)
@@ -135,16 +129,10 @@ def greasepencil(input_image, ncol=4, tmp_w=None):
             minc = np.clip(c - large, 0, None)
             maxc = np.clip(c + large, None, n)
 
-        picture = color_image[minr:maxr, minc:maxc]
+        picture = rgb_img[minr:maxr, minc:maxc]
         picture = trim_black_border(picture, tol=100)
 
-<<<<<<< HEAD
-        io.imsave(f"{destination}/{name}-{counter:02}.jpg", picture, quality=100)
-
-        counter += 1
-=======
         io.imsave(os.path.join(destination, filename), picture, quality=100)
->>>>>>> ea87a7c07253c9c2e7199535a184c1bbeb9730f2
 
 
 # create list of files to be processed
