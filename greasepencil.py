@@ -33,13 +33,13 @@ def trim_black_border(img,tol=0):
 def open_image(image_path, tmp_w=None, ncol=4):
     image = io.imread(image_path)
     hsv_img = rgb2hsv(image)
-    value_img = hsv_img[:, :, 2]
+    value_img = img_as_ubyte(hsv_img[:, :, 2])
     m, n = image.shape
     if tmp_w is None:
         tmp_w = round(n/ncol)
         user_tmp_w = False
     
-    return image, tmp_w, user_tmp_w, image_path
+    return value_img, tmp_w, user_tmp_w, image_path
 
 def build_template(tmp_w):
     # build slide template
@@ -55,7 +55,7 @@ def build_template(tmp_w):
 
     return template
 
-def multiscale_template_matcher(template, image, user_tmp_w):
+def multiscale_template_matcher(template, value_img, user_tmp_w):
 
     # loop over template sizes and pick best match
     widths = []
@@ -71,8 +71,8 @@ def multiscale_template_matcher(template, image, user_tmp_w):
 
         v_template = np.rot90(resized)
 
-        h_result = match_template(image[:,:,2], resized, pad_input=True)
-        v_result = match_template(image[:,:,2], v_template, pad_input=True)
+        h_result = match_template(value_img, resized, pad_input=True)
+        v_result = match_template(value_img, v_template, pad_input=True)
 
         combined_results = h_result + v_result
 
