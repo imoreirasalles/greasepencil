@@ -6,6 +6,7 @@ from skimage.feature import match_template, peak_local_max
 from skimage.morphology import extrema
 from skimage.measure import label
 from skimage.segmentation import watershed
+from skimage.color import rgb2hsv
 from skimage import exposure, img_as_ubyte, io, color, transform
 
 """
@@ -31,6 +32,8 @@ def trim_black_border(img,tol=0):
 
 def open_image(image_path, tmp_w=None, ncol=4):
     image = io.imread(image_path)
+    hsv_img = rgb2hsv(image)
+    value_img = hsv_img[:, :, 2]
     m, n = image.shape
     if tmp_w is None:
         tmp_w = round(n/ncol)
@@ -71,7 +74,9 @@ def multiscale_template_matcher(template, image, user_tmp_w):
         h_result = match_template(image[:,:,2], resized, pad_input=True)
         v_result = match_template(image[:,:,2], v_template, pad_input=True)
 
-        h_coordinates = peak_local_max(h_result, min_distance=int(tmp_w*0.8), threshold_abs=0.35, exclude_border=False)
+        combined_results = h_result + v_result
+
+        h_coordinates = peak_local_max(combined_results, min_distance=int(tmp_w*0.8), threshold_abs=0.35, exclude_border=False)
         coordinates_list = [[coor[0], coor[1]] for coor in h_coordinates]
 
         if user_tmp_w == True:
