@@ -82,7 +82,7 @@ def frame_detector(input_image, ncol=4, tmp_w=None):
         v_result = match_template(bw_img, v_template, pad_input=True)
 
         combined_results = h_result + v_result
-        
+
         coordinates = peak_local_max(
             combined_results,
             min_distance=int(tmp_w * 0.8),
@@ -161,7 +161,7 @@ image_files = [
 # call function
 for i in image_files:
     try:
-        frame_detector(i, tmp_w=930)
+        frame_detector(i)
     except Exception as e:
         print(str(e))
 
