@@ -9,6 +9,8 @@ from skimage.segmentation import watershed
 from skimage.color import rgb2hsv
 from skimage import exposure, img_as_ubyte, io, color, transform
 
+from datetime import datetime
+
 source = input("Em qual pasta estão as imagens matriz?")
 destination = input("Em qual pasta deseja salvar as imagens individualizadas?")
 previous_files = len(os.listdir(destination))
@@ -31,26 +33,31 @@ def trim_black_border(img, tol=0):
     return img[row_start:row_end, col_start:col_end]
 
 
-def greasepencil(input_image, ncol=4, tmp_w=None):
+def frame_detector(input_image, ncol=4, tmp_w=None):
 
     os.chdir(f"{source}")
 
     # read image and determine template width
+    print("Opening and preprocessing")
     rgb_img = img_as_ubyte(io.imread(input_image))
-    hsv_img = rgb2hsv(rgb_img)
-    value_img = hsv_img[:, :, 2]
-    m, n = value_img.shape
+    bw_img = img_as_ubyte(io.imread(input_image, as_gray=True))
+    #hsv_img = img_as_ubyte(rgb2hsv(rgb_img))
+    #value_img = hsv_img[:, :, 2]
+    m, n = bw_img.shape
     if not tmp_w:
-        tmp_w = round(min(value_img.shape)/ncol)
+        tmp_w = round(min(bw_img.shape)/ncol)
         user_tmp_w = False
-        
-    # establish relative measures
+    else:
+        user_tmp_w = True
+
+    # determine frame edges
     frame_left = round(tmp_w * 0.15)
     frame_right = round(tmp_w * 0.85)
     frame_top = round(tmp_w * 0.27)
     frame_bottom = round(tmp_w * 0.73)
 
     # build slide template
+    print("Building template")
     rel_template = np.full((tmp_w, tmp_w), 0.07)
     rel_template[frame_top:frame_bottom, frame_left:frame_right] = 0.5
     rel_template = np.pad(rel_template, (30,), constant_values=1)
@@ -64,17 +71,18 @@ def greasepencil(input_image, ncol=4, tmp_w=None):
     found = None
 
     for scale in np.linspace(0.5, 1.0, 6)[::-1]:
-
+        print("Looking for objects' positions")
         tmp_w = int(rel_template.shape[0] * scale)
         resized = transform.resize(rel_template, (tmp_w, tmp_w))
 
         v_template = np.rot90(resized)
-
-        h_result = match_template(value_img, resized, pad_input=True)
-        v_result = match_template(value_img, v_template, pad_input=True)
+        print("Horizontal matching...")
+        h_result = match_template(bw_img, resized, pad_input=True)
+        print("Vertical matching...")
+        v_result = match_template(bw_img, v_template, pad_input=True)
 
         combined_results = h_result + v_result
-
+        
         coordinates = peak_local_max(
             combined_results,
             min_distance=int(tmp_w * 0.8),
@@ -83,14 +91,17 @@ def greasepencil(input_image, ncol=4, tmp_w=None):
         )
         coordinates_list = [[coor[0], coor[1]] for coor in coordinates]
 
+
         if user_tmp_w == True:
+            print("User defined template size, exiting loop")
             break
 
-        peaks = [h_result[r, c] for r, c in coordinates]
+        peaks = [combined_results[r, c] for r, c in coordinates]
 
         if peaks:
             avg = sum(peaks) / len(peaks)
         else:
+            print("No objects found, trying again")
             continue
 
         if found is None or avg > found:
@@ -99,11 +110,14 @@ def greasepencil(input_image, ncol=4, tmp_w=None):
             coors.append(coordinates_list)
             h_results.append(h_result)
             v_results.append(v_result)
+            print("Unsatisfactory results, trying again")
+            continue
         else:
             coordinates_list = coors[-1]
             v_result = v_results[-1]
             h_result = h_results[-1]
             tmp_w = widths[-1]
+            print("Best match found, exiting loop")
             break
 
     # arrange images from top left to bottom right
@@ -116,7 +130,7 @@ def greasepencil(input_image, ncol=4, tmp_w=None):
         large = round(tmp_w * 0.34)
         small = round(tmp_w * 0.22)
         filename = f"{name}-{i+1:02}.jpg"
-
+        print("Determining image orientation")
         if v_result[r, c] > h_result[r, c]:
             minr = np.clip(r - large, 0, None)
             maxr = np.clip(r + large, None, m)
@@ -131,8 +145,9 @@ def greasepencil(input_image, ncol=4, tmp_w=None):
 
         picture = rgb_img[minr:maxr, minc:maxc]
         picture = trim_black_border(picture, tol=100)
-
+        print(f"Saving image {i+1}")
         io.imsave(os.path.join(destination, filename), picture, quality=100)
+
 
 
 # create list of files to be processed
@@ -146,7 +161,7 @@ image_files = [
 # call function
 for i in image_files:
     try:
-        greasepencil(i)
+        frame_detector(i, tmp_w=930)
     except Exception as e:
         print(str(e))
 
