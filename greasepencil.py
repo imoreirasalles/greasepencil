@@ -38,19 +38,10 @@ my_parser.add_argument('--template_width', '-tmp_w',
                        type = int,
                        help = "size (in pixels) of slides to look for. If empty, the script picks best match starting with image width / ncol and reducing 10percent every try.")
 
-args = my_parser.parse_args()
-
-source = args.source
-destination = args.destination
-ncol = args.number_of_columns
-tmp_w = args.template_width
-
-
-
 
 def trim_black_border(img, tol=0, trim_max=None):
     # img is 2D or 3D image data
-    # tol  is tolerance
+    # tol is tolerance
     mask = img > tol
     if img.ndim == 3:
         mask = mask.all(2)
@@ -69,24 +60,25 @@ def trim_black_border(img, tol=0, trim_max=None):
     return img[row_start:row_end, col_start:col_end]
 
 
-def frame_detector(input_image, ncol=4, tmp_w=None):
+#def frame_detector(input_image, ncol=4, tmp_w=None):
 
+def preprocess(input_image, ncol=4, tmp_w=None):
     # read image and determine template width
-    
     print("Opening and preprocessing")
     rgb_img = img_as_ubyte(io.imread(input_image))
     bw_img = img_as_ubyte(io.imread(input_image, as_gray=True))
     small_bw_img = transform.rescale(bw_img, 0.5)
+    filename, ext = str.split(os.path.split(input_image)[1], ".")
     #small_bw_img = transform.rescale(small_bw_img, 0.5)
-    m, n = bw_img.shape
     if not tmp_w:
         tmp_w = round(small_bw_img.shape[1]/ncol)
         user_tmp_w = False
     else:
         tmp_w = round(tmp_w / 2)
         user_tmp_w = True
+    return filename, rgb_img, small_bw_img, tmp_w, user_tmp_w
 
-
+def build_template(tmp_w):
     # determine frame edges
     frame_left = round(tmp_w * 0.15)
     frame_right = round(tmp_w * 0.85)
@@ -95,34 +87,36 @@ def frame_detector(input_image, ncol=4, tmp_w=None):
 
     # build slide template
     print("Building template")
-    rel_template = np.full((tmp_w, tmp_w), 0.07)
-    rel_template[frame_top:frame_bottom, frame_left:frame_right] = 0.5
-    rel_template = np.pad(rel_template, (30,), constant_values=1)
-    rel_template += 0.1 * np.random.random(rel_template.shape)
+    template = np.full((tmp_w, tmp_w), 0.07)
+    template[frame_top:frame_bottom, frame_left:frame_right] = 0.5
+    template = np.pad(template, (30,), constant_values=1)
+    template += 0.1 * np.random.random(template.shape)
+
+    return template
+
+def matcher(image, template, user_tmp_w):
 
     # loop over template sizes and pick best match
     widths = []
     coors = []
-    h_results = []
-    v_results = []
     found = None
 
     for scale in np.linspace(0.5, 1.0, 6)[::-1]:
 
         print("Looking for objects' positions")
         
-        tmp_w = int(rel_template.shape[0] * scale)
-        resized = transform.resize(rel_template, (tmp_w, tmp_w))
+        tmp_w = round(template.shape[0] * scale)
+        resized = transform.resize(template, (tmp_w, tmp_w))
         v_template = np.rot90(resized)
 
         print("Horizontal matching...")
 
-        h_result = match_template(small_bw_img, resized, pad_input=True)
+        h_result = match_template(image, resized, pad_input=True)
         #h_result = transform.rescale(h_result, 4.0)
         
         print("Vertical matching...")
 
-        v_result = match_template(small_bw_img, v_template, pad_input=True)
+        v_result = match_template(image, v_template, pad_input=True)
         #v_result = transform.rescale(v_result, 4.0)
     
         #tmp_w = tmp_w * 4
@@ -131,66 +125,74 @@ def frame_detector(input_image, ncol=4, tmp_w=None):
         #plt.imshow(combined_results)
         #plt.show()
 
-        coordinates = peak_local_max(
+        peaks = peak_local_max(
             combined_results,
             min_distance=int(tmp_w * 0.8),
             threshold_abs=0.35,
-            exclude_border=False,
-        )
-        coordinates_list = [(coor[0]*2, coor[1]*2) for coor in coordinates]
-        
-        h_result = transform.rescale(h_result, 2.0)
+            exclude_border=False)
+
+        coordinates_list = [[coor[0], coor[1]] for coor in peaks]
+
+        #h_result = transform.rescale(h_result, 2.0)
         #h_result = transform.rescale(h_result, 2.0)
         
-        v_result = transform.rescale(v_result, 2.0)
+        #v_result = transform.rescale(v_result, 2.0)
         #v_result = transform.rescale(v_result, 2.0)
 
-        tmp_w = tmp_w * 2
         #tmp_w = tmp_w * 2
-
+        #tmp_w = tmp_w * 2
 
         if user_tmp_w == True:
             print("User defined template size, exiting loop")
             break
 
-        peaks = [combined_results[r, c] for r, c in coordinates]
+        values = [combined_results[r, c] for r, c in coordinates_list]
 
-        if peaks:
-            avg = sum(peaks) / len(peaks)
+        if values:
+            avg = sum(values) / len(values)
         else:
             print("No objects found, trying again")
             continue
+
+        for item in coordinates_list:
+            if v_result[item[0], item[1]] > h_result[item[0], item[1]]:
+                item[0] *= 2
+                item[1] *= 2
+                item.append("v")
+            else:
+                item[0] *= 2
+                item[1] *= 2
+                item.append("h")
 
         if found is None or avg > found:
             found = avg
             widths.append(tmp_w)
             coors.append(coordinates_list)
-            h_results.append(h_result)
-            v_results.append(v_result)
             print("Unsatisfactory results, trying again")
             continue
         else:
-            coordinates_list = coors[-1]
-            v_result = v_results[-1]
-            h_result = h_results[-1]
-            tmp_w = widths[-1]
+            coordinates = coors[-1] 
+            tmp_w = widths[-1] * 2
             print("Best match found, exiting loop")
             break
 
     # sort images from top left to bottom right
-    coordinates_list.sort(key=lambda item: (item[0] * 4 + item[1]) / 5)
+    coordinates.sort(key=lambda item: (item[0] * 4 + item[1]) / 5)
 
+    return coordinates, tmp_w
+
+def save_images(image, name, destination, coordinates, tmp_w):
     # determine picture orientation, trim and save file
-    for i, point in enumerate(coordinates_list):
-        r, c = point
-        name, ext = str.split(os.path.split(input_image)[1], ".")
-        large = round(tmp_w * 0.34)
-        small = round(tmp_w * 0.22)
+    for i, point in enumerate(coordinates):
+        m, n, d = image.shape
+        r, c, l = point
+        large = int(tmp_w * 0.34)
+        small = int(tmp_w * 0.22)
         filename = f"{name}-{i+1:02}.jpg"
 
         print("Determining image orientation")
 
-        if v_result[r, c] > h_result[r, c]:
+        if l == "v":
             minr = np.clip(r - large, 0, None)
             maxr = np.clip(r + large, None, m)
             minc = np.clip(c - small, 0, None)
@@ -202,35 +204,49 @@ def frame_detector(input_image, ncol=4, tmp_w=None):
             minc = np.clip(c - large, 0, None)
             maxc = np.clip(c + large, None, n)
 
-        picture = rgb_img[minr:maxr, minc:maxc]
+        picture = image[minr:maxr, minc:maxc]
         picture = trim_black_border(picture, tol=100, trim_max=30)
         print(f"Saving image {i+1}")
         io.imsave(os.path.join(destination, filename), picture, quality=100)
         
 
+def main(input_image):
+    filename, rgb_img, small_bw_img, tmp_w, user_tmp_w = preprocess(input_image, tmp_w=TMP_W)
+    template = build_template(tmp_w)
+    coordinates, tmp_w = matcher(small_bw_img, template, user_tmp_w)
+    save_images(rgb_img, filename, DESTINATION, coordinates, tmp_w=tmp_w)
+    
+if __name__ == "__main__":
 
-# create list of files to be processed
-extensions = (".jpg", ".jpeg")
-previous_files = len(os.listdir(f"{destination}"))
+    args = my_parser.parse_args()
 
-image_files = [
-    os.path.join(source, image_file)
-    for image_file in os.listdir(source)
-    if str(image_file).endswith(tuple(extensions))
-]
+    SOURCE = args.source
+    DESTINATION = args.destination
+    NCOL = args.number_of_columns
+    TMP_W = args.template_width
 
-# call function
-for i in image_files:
-    start = datetime.now()
-    frame_detector(i, ncol=ncol, tmp_w=tmp_w)
-    print(datetime.now() - start)
-    #try:
-    #    frame_detector(i)
-    #except Exception as e:
-    #    print(str(e))
+    # create list of files to be processed
+    extensions = (".jpg", ".jpeg")
+    previous_files = len(os.listdir(f"{DESTINATION}"))
 
-# final feedback
-print(
-    f"Você forneceu {len(image_files)} imagens e gerou {len(os.listdir(destination))-previous_files} arquivos!"
-)
+    image_files = [
+        os.path.join(SOURCE, image_file)
+        for image_file in os.listdir(SOURCE)
+        if str(image_file).endswith(tuple(extensions))
+    ]
+
+    # call function
+    for i in image_files:
+        start = datetime.now()
+        main(i)
+        print(datetime.now() - start)
+        #try:
+        #    frame_detector(i)
+        #except Exception as e:
+        #    print(str(e))
+
+    # final feedback
+    print(
+        f"Você forneceu {len(image_files)} imagens e gerou {len(os.listdir(DESTINATION))-previous_files} arquivos!"
+    )
 
