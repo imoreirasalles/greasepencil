@@ -112,18 +112,12 @@ def matcher(image, template, user_tmp_w):
         print("Horizontal matching...")
 
         h_result = match_template(image, resized, pad_input=True)
-        #h_result = transform.rescale(h_result, 4.0)
-        
+
         print("Vertical matching...")
 
         v_result = match_template(image, v_template, pad_input=True)
-        #v_result = transform.rescale(v_result, 4.0)
-    
-        #tmp_w = tmp_w * 4
         
         combined_results = h_result + v_result
-        #plt.imshow(combined_results)
-        #plt.show()
 
         peaks = peak_local_max(
             combined_results,
@@ -133,36 +127,24 @@ def matcher(image, template, user_tmp_w):
 
         coordinates_list = [[coor[0], coor[1]] for coor in peaks]
 
-        #h_result = transform.rescale(h_result, 2.0)
-        #h_result = transform.rescale(h_result, 2.0)
-        
-        #v_result = transform.rescale(v_result, 2.0)
-        #v_result = transform.rescale(v_result, 2.0)
-
-        #tmp_w = tmp_w * 2
-        #tmp_w = tmp_w * 2
+        for item in coordinates_list:
+            if v_result[item[0], item[1]] > h_result[item[0], item[1]]:
+                item.append("v")
+            else:
+                item.append("h")
 
         if user_tmp_w == True:
+            tmp_w *= 2
             print("User defined template size, exiting loop")
             break
 
-        values = [combined_results[r, c] for r, c in coordinates_list]
+        values = [combined_results[r, c] for r, c, l in coordinates_list]
 
         if values:
             avg = sum(values) / len(values)
         else:
             print("No objects found, trying again")
             continue
-
-        for item in coordinates_list:
-            if v_result[item[0], item[1]] > h_result[item[0], item[1]]:
-                item[0] *= 2
-                item[1] *= 2
-                item.append("v")
-            else:
-                item[0] *= 2
-                item[1] *= 2
-                item.append("h")
 
         if found is None or avg > found:
             found = avg
@@ -171,21 +153,23 @@ def matcher(image, template, user_tmp_w):
             print("Unsatisfactory results, trying again")
             continue
         else:
-            coordinates = coors[-1] 
-            tmp_w = widths[-1] * 2
+            coordinates_list = coors[-1] 
+            tmp_w = widths[-1]
             print("Best match found, exiting loop")
             break
 
     # sort images from top left to bottom right
-    coordinates.sort(key=lambda item: (item[0] * 4 + item[1]) / 5)
+    coordinates_list.sort(key=lambda item: (item[0] * 4 + item[1]) / 5)
 
-    return coordinates, tmp_w
+    return coordinates_list, tmp_w
 
 def save_images(image, name, destination, coordinates, tmp_w):
     # determine picture orientation, trim and save file
     for i, point in enumerate(coordinates):
         m, n, d = image.shape
         r, c, l = point
+        r *= 2
+        c *= 2
         large = int(tmp_w * 0.34)
         small = int(tmp_w * 0.22)
         filename = f"{name}-{i+1:02}.jpg"
