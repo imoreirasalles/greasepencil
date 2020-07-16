@@ -1,5 +1,7 @@
 /_input/
 /_output/
+/testing/
+/stats/
 
 canny-viewer.py
 canny.py

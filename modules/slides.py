@@ -6,37 +6,42 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from skimage.feature import match_template, peak_local_max
-from skimage.morphology import extrema
 from skimage.measure import label
-from skimage.segmentation import watershed
 from skimage import exposure, img_as_ubyte, io, color, transform
 
 from datetime import datetime
 
 
-
 # Create argument parser
-my_parser = argparse.ArgumentParser(description='Detect frames in a sleeve of 35mm slides')
+my_parser = argparse.ArgumentParser(
+    description="Detect frames in a sleeve of 35mm slides"
+)
 
-my_parser.add_argument('source',
-                       metavar='Source Path',
-                       type=str,
-                       help='Path to input files')
+my_parser.add_argument(
+    "source", metavar="Source Path", type=str, help="Path to input files"
+)
 
-my_parser.add_argument('destination',
-                       metavar='Destination Path',
-                       type=str,
-                       help='Path to output files')
+my_parser.add_argument(
+    "destination", metavar="Destination Path", type=str, help="Path to output files"
+)
 
-my_parser.add_argument('--number_of_columns', '-ncol',
-                       nargs = '?', default = 4,
-                       type=int,
-                       help='Number of columns in sleeve. Defaults to 4 (standard vertical printfile)')
+my_parser.add_argument(
+    "--number_of_columns",
+    "-ncol",
+    nargs="?",
+    default=4,
+    type=int,
+    help="Number of columns in sleeve. Defaults to 4 (standard vertical printfile)",
+)
 
-my_parser.add_argument('--template_width', '-tmp_w',
-                       nargs = '?', default = None,
-                       type = int,
-                       help = "size (in pixels) of slides to look for. If empty, the script picks best match starting with image width / ncol and reducing 10percent every try.")
+my_parser.add_argument(
+    "--template_width",
+    "-tmp_w",
+    nargs="?",
+    default=None,
+    type=int,
+    help="size (in pixels) of slides to look for. If empty, the script picks best match starting with image width / ncol and reducing 10percent every try.",
+)
 
 
 def trim_black_border(img, tol=0, trim_max=None):
@@ -51,16 +56,14 @@ def trim_black_border(img, tol=0, trim_max=None):
     col_start = np.clip(mask0.argmax(), 0, trim_max)
     row_start = np.clip(mask1.argmax(), 0, trim_max)
     if trim_max == None:
-        col_end = (n - mask0[::-1].argmax())
-        row_end = (m - mask1[::-1].argmax())
-    else:    
+        col_end = n - mask0[::-1].argmax()
+        row_end = m - mask1[::-1].argmax()
+    else:
         col_end = np.clip(n - mask0[::-1].argmax(), n - trim_max, n)
         row_end = np.clip(m - mask1[::-1].argmax(), m - trim_max, m)
 
     return img[row_start:row_end, col_start:col_end]
 
-
-#def frame_detector(input_image, ncol=4, tmp_w=None):
 
 def preprocess(input_image, ncol=4, tmp_w=None):
     # read image and determine template width
@@ -68,15 +71,16 @@ def preprocess(input_image, ncol=4, tmp_w=None):
     rgb_img = img_as_ubyte(io.imread(input_image))
     bw_img = img_as_ubyte(io.imread(input_image, as_gray=True))
     small_bw_img = transform.rescale(bw_img, 0.5)
-    filename, ext = str.split(os.path.split(input_image)[1], ".")
-    #small_bw_img = transform.rescale(small_bw_img, 0.5)
+    filename, _ = str.split(os.path.split(input_image)[1], ".")
+    # small_bw_img = transform.rescale(small_bw_img, 0.5)
     if not tmp_w:
-        tmp_w = round(small_bw_img.shape[1]/ncol)
+        tmp_w = round(small_bw_img.shape[1] / ncol)
         user_tmp_w = False
     else:
         tmp_w = round(tmp_w / 2)
         user_tmp_w = True
     return filename, rgb_img, small_bw_img, tmp_w, user_tmp_w
+
 
 def build_template(tmp_w):
     # determine frame edges
@@ -94,6 +98,7 @@ def build_template(tmp_w):
 
     return template
 
+
 def matcher(image, template, user_tmp_w):
 
     # loop over template sizes and pick best match
@@ -104,7 +109,7 @@ def matcher(image, template, user_tmp_w):
     for scale in np.linspace(0.5, 1.0, 6)[::-1]:
 
         print("Looking for objects' positions")
-        
+
         tmp_w = round(template.shape[0] * scale)
         resized = transform.resize(template, (tmp_w, tmp_w))
         v_template = np.rot90(resized)
@@ -116,14 +121,15 @@ def matcher(image, template, user_tmp_w):
         print("Vertical matching...")
 
         v_result = match_template(image, v_template, pad_input=True)
-        
+
         combined_results = h_result + v_result
 
         peaks = peak_local_max(
             combined_results,
             min_distance=int(tmp_w * 0.8),
             threshold_abs=0.35,
-            exclude_border=False)
+            exclude_border=False,
+        )
 
         coordinates_list = [[coor[0], coor[1]] for coor in peaks]
 
@@ -153,7 +159,7 @@ def matcher(image, template, user_tmp_w):
             print("Unsatisfactory results, trying again")
             continue
         else:
-            coordinates_list = coors[-1] 
+            coordinates_list = coors[-1]
             tmp_w = widths[-1]
             print("Best match found, exiting loop")
             break
@@ -163,10 +169,11 @@ def matcher(image, template, user_tmp_w):
 
     return coordinates_list, tmp_w
 
+
 def save_images(image, name, destination, coordinates, tmp_w):
     # determine picture orientation, trim and save file
     for i, point in enumerate(coordinates):
-        m, n, d = image.shape
+        m, n, _ = image.shape
         r, c, l = point
         r *= 2
         c *= 2
@@ -192,14 +199,17 @@ def save_images(image, name, destination, coordinates, tmp_w):
         picture = trim_black_border(picture, tol=100, trim_max=30)
         print(f"Saving image {i+1}")
         io.imsave(os.path.join(destination, filename), picture, quality=100)
-        
+
 
 def main(input_image):
-    filename, rgb_img, small_bw_img, tmp_w, user_tmp_w = preprocess(input_image, tmp_w=TMP_W)
+    filename, rgb_img, small_bw_img, tmp_w, user_tmp_w = preprocess(
+        input_image, tmp_w=TMP_W
+    )
     template = build_template(tmp_w)
     coordinates, tmp_w = matcher(small_bw_img, template, user_tmp_w)
     save_images(rgb_img, filename, DESTINATION, coordinates, tmp_w=tmp_w)
-    
+
+
 if __name__ == "__main__":
 
     args = my_parser.parse_args()
@@ -224,9 +234,9 @@ if __name__ == "__main__":
         start = datetime.now()
         main(i)
         print(datetime.now() - start)
-        #try:
+        # try:
         #    frame_detector(i)
-        #except Exception as e:
+        # except Exception as e:
         #    print(str(e))
 
     # final feedback
