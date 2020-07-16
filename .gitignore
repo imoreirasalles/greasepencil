@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /testing/
 
 /_input
@@ -21,3 +22,17 @@ run.py
 **/.DS_Store
 
 .vscode/**
+=======
+/_input/
+/_output/
+/testing/
+/stats/
+
+canny-viewer.py
+canny.py
+edge-template.py
+greasepencil-dev.py
+greasepencil-old-1.py
+greasepencil-old-2.py
+
+>>>>>>> additions
