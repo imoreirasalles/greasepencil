@@ -10,11 +10,8 @@ scikit-image = "*"
 pylint = "*"
 black = "*"
 python-dotenv = "*"
-<<<<<<< HEAD
-=======
 timecode = "*"
 pandas = "*"
->>>>>>> additions
 
 [requires]
 python_version = "3.8"

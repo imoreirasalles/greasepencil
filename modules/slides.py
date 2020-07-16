@@ -127,7 +127,7 @@ def matcher(image, template, user_tmp_w):
         peaks = peak_local_max(
             combined_results,
             min_distance=int(tmp_w * 0.8),
-            threshold_abs=0.35,
+            threshold_abs=0.9,
             exclude_border=False,
         )
 
