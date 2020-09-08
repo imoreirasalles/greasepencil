@@ -43,6 +43,15 @@ my_parser.add_argument(
     help="size (in pixels) of slides to look for. If empty, the script picks best match starting with image width / ncol and reducing 10percent every try.",
 )
 
+my_parser.add_argument(
+    "--maximum_trim",
+    "-trimmax",
+    nargs="?",
+    default=30,
+    type=int,
+    help="Maximum number of dark border pixels to trim. If the image is too dark it might eat a bit of the edges.",
+)
+
 
 def trim_black_border(img, tol=0, trim_max=None):
     # img is 2D or 3D image data
@@ -75,10 +84,12 @@ def preprocess(input_image, ncol=4, tmp_w=None):
     # small_bw_img = transform.rescale(small_bw_img, 0.5)
     if not tmp_w:
         tmp_w = round(small_bw_img.shape[1] / ncol)
+
         user_tmp_w = False
     else:
         tmp_w = round(tmp_w / 2)
         user_tmp_w = True
+
     return filename, rgb_img, small_bw_img, tmp_w, user_tmp_w
 
 
@@ -95,6 +106,9 @@ def build_template(tmp_w):
     template[frame_top:frame_bottom, frame_left:frame_right] = 0.5
     template = np.pad(template, (30,), constant_values=1)
     template += 0.1 * np.random.random(template.shape)
+    # template = io.imread(
+    #    "/Users/martimpassos/Documents/Zingg/template2.jpg", as_gray=True
+    # )
 
     return template
 
@@ -111,6 +125,7 @@ def matcher(image, template, user_tmp_w):
         print("Looking for objects' positions")
 
         tmp_w = round(template.shape[0] * scale)
+
         resized = transform.resize(template, (tmp_w, tmp_w))
         v_template = np.rot90(resized)
 
@@ -161,7 +176,9 @@ def matcher(image, template, user_tmp_w):
         else:
             coordinates_list = coors[-1]
             tmp_w = widths[-1]
+            tmp_w *= 2
             print("Best match found, exiting loop")
+
             break
 
     # sort images from top left to bottom right
@@ -177,6 +194,7 @@ def save_images(image, name, destination, coordinates, tmp_w):
         r, c, l = point
         r *= 2
         c *= 2
+
         large = int(tmp_w * 0.34)
         small = int(tmp_w * 0.22)
         filename = f"{name}-{i+1:02}.jpg"
@@ -218,6 +236,7 @@ if __name__ == "__main__":
     DESTINATION = args.destination
     NCOL = args.number_of_columns
     TMP_W = args.template_width
+    MAXTRIM = args.maximum_trim
 
     # create list of files to be processed
     extensions = (".jpg", ".jpeg")

@@ -1,26 +1,28 @@
-## O que é o greasepencil?
+# Greasepencil
 
-O greasepencil é um script escrito em python que individualiza em lote as fotografias contidas na captura de um porta negativo, __que deve ter extensão .jpg ou .jpeg__.
+Greasepencil is an under development Python open source software intended to optimize 35mm and medium format digitization workflows. As of now it takes input images containing
 
-As imagens resultantes têm o mesmo nome do arquivo matriz, acrescido de um contador de dois dígitos e extensão .jpg.
+## Getting started
 
+Download or clone the repository and install the requirements.
 
-## Como usar o greasepencil:
+##  Usage
 
-* Você deve ter Python 3.7 ou superior instalado na sua máquina.
+```$ python modules/slides.py -h```
 
-* Clique duas vezes no ícone do script `greasepencil.py` para abrí-lo no programa IDLE. Para executá-lo, clique em `Run` ou pressione F5.
+```$ python modules/slides.py /path/to/input/folder /path/to/output/folder```
 
-* O programa irá solicitar o caminho da pasta de origem e destino das imagens. Você deve pressionar `Enter` após cada entrada.
+### CLI args
 
-* Para copiar o caminho usando Windows 10, navegue até a pasta desejada, pressione `Ctrl` + `L` para revelar o caminho na barra de endereço e copie o texto como preferir. Note que você deve estar dentro da pasta, mesmo que esteja vazia.
+-tmp_w, --template_width
 
-* Em um mac, clique com o botão direito no ícone da pasta desejada e segure a tecla `Option`. A opção "copiar caminho do arquivo" aparece.
+Slide size to look for. If it is constant across all files, a quick inspection can greatly shorten the processing time.
+___
+-maxtrim, --maximum_trim (default=30)
 
-* As imagens passam a ser salvas automaticamente. :heart_eyes: A cada arquivo o programa informa quantas regiões detectou e quantas precisam de revisão, assim como o total de imagens geradas ao final do processamento.
+Maximum number of dark pixels to crop from output image border. This makes files look nicer but might eat in dark images.
+___
 
-***
+-ncol, --number_of_columns (default=4)
 
-> Nota: O tempo de processamento é de aproximadamente 10 segundos por folha com 20 diapositivos em uma pasta local. Se os arquivos de origem estiverem no servidor o tempo de processamento pode aumentar consideravelmente.
-> 
-> Nota2: Pode have uma diferença de cor entre as imagens matriz e resultantes, uma vez que o script não associa nenhum espaço de cor aos arquivos.
+How many columns of slides there are in the image. Defaults to a standard vertical printfile.
